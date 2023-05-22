@@ -165,21 +165,18 @@ namespace EE
             {
                 spriteBatch.Draw(sprite.Texture, sprite.Position, sprite.Color1);
             }
-            int y = 10; // Starting y position of text
-            foreach (CustomSprite sprite in sprites)
-            {
-                spriteBatch.Draw(sprite.Texture, sprite.Position, sprite.Color1);
-                spriteBatch.DrawString(font, $"Velocity: {sprite.Velocity}", new Vector2(10, y), Color.Black);
-                y += 20; // Increase y position for next line of text
-            }
+        
             foreach (CustomSprite sprite in sprites)
             {
                 // Draw the selected sprite with a different texture
                 if (sprite == selectedSprite)
                 {
                     // Draw the selected texture on top of the sprite
+                    int y = 10; // Starting y position of text
                     Texture2D selected = Content.Load<Texture2D>("selected");
                     spriteBatch.Draw(selected, sprite.Position, Color.White);
+                    spriteBatch.DrawString(font, $"Velocity: {sprite.Velocity}", new Vector2(10, y), Color.Black);
+                    y += 20; // Increase y position for next line of text
                 }
                 else
                 {
