@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
@@ -21,7 +21,8 @@ namespace EE
         Random random = new Random();
         private int lastSpawnedIndex = 0;
         private Double lastspawnedTimer = 0.0;
-        private Texture2D selected;
+        private CustomSprite selectedSprite;
+        Texture2D selected;
 
         private void SpawnForest()
         {
@@ -73,7 +74,7 @@ namespace EE
         public Game1()
         {
             Content.RootDirectory = "Content";
-            IsMouseVisible = true;          
+            IsMouseVisible = true;
         }
         public void InitializeGraphics()
         {
@@ -89,7 +90,7 @@ namespace EE
 
             graphics.PreferredBackBufferWidth = 800;
             graphics.PreferredBackBufferHeight = 600;
-            
+
             LoadContent();
             graphics.ApplyChanges();
             base.Initialize();
@@ -97,7 +98,6 @@ namespace EE
 
         protected override void LoadContent()
         {
-            Texture2D selected = Content.Load<Texture2D>("selected");
             font = Content.Load<SpriteFont>("Font");
             spriteBatch = new SpriteBatch(graphicsDevice);
 
@@ -105,12 +105,27 @@ namespace EE
             vegsprites = new List<VegSprite>();
 
             // TODO: use this.Content to load your game content here
-           
+
         }
 
         protected override void Update(GameTime gameTime)
         {
+            // Handle mouse input
+            MouseState mouseState = Mouse.GetState();
+            if (mouseState.LeftButton == ButtonState.Pressed)
+            {
+                Vector2 mousePosition = new Vector2(mouseState.X, mouseState.Y);
 
+                // Check if a sprite was clicked
+                foreach (CustomSprite sprite in sprites)
+                {
+                    if (sprite.Bounds.Contains(mousePosition))
+                    {
+                        // Sprite clicked, do something
+                        selectedSprite = sprite;
+                    }
+                }
+            }
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
             elapsedTime += gameTime.ElapsedGameTime.TotalSeconds;
@@ -157,7 +172,21 @@ namespace EE
                 spriteBatch.DrawString(font, $"Velocity: {sprite.Velocity}", new Vector2(10, y), Color.Black);
                 y += 20; // Increase y position for next line of text
             }
-
+            foreach (CustomSprite sprite in sprites)
+            {
+                // Draw the selected sprite with a different texture
+                if (sprite == selectedSprite)
+                {
+                    // Draw the selected texture on top of the sprite
+                    Texture2D selected = Content.Load<Texture2D>("selected");
+                    spriteBatch.Draw(selected, sprite.Position, Color.White);
+                }
+                else
+                {
+                    // Draw the regular sprite texture
+                    spriteBatch.Draw(sprite.Texture, sprite.Position, Color.White);
+                }
+            }
             spriteBatch.End();
             base.Draw(gameTime);
         }
