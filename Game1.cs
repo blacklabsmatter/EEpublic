@@ -6,6 +6,7 @@ using System;
 using System.Drawing;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
+using MonoGame.Extended.Sprites;
 
 namespace EE
 {
@@ -22,6 +23,7 @@ namespace EE
         private int lastSpawnedIndex = 0;
         private Double lastspawnedTimer = 0.0;
         private CustomSprite selectedSprite;
+        private VegSprite selectedVegSprite;
         Texture2D selected;
 
         private void SpawnForest()
@@ -39,8 +41,9 @@ namespace EE
                 rotationSpeed = (float)random.NextDouble() * 2 - 1;
             }
             Color color = new Color(random.Next(255), random.Next(255), random.Next(255), 255);
-
-            vegsprites.Add(new VegSprite(texture, position, rotation, scale, age, true, radius, color));
+            float condition = 100;
+            bool isTextureLoaded = false;
+            vegsprites.Add(new VegSprite(texture, position, rotation, scale, age, true, radius, color, condition, isTextureLoaded));
         }
 
 
@@ -64,7 +67,9 @@ namespace EE
             Color color = vegsprites[lastSpawnedIndex].Color1;
             lastspawnedTimer = elapsedTime;
             float condition = 100;
-            sprites.Add(new CustomSprite(texture, position, origin, velocity, rotation, scale, age, true, movement, radius, rotationSpeed, color, condition));
+            bool isTextureLoaded= false;
+            sprites.Add(new CustomSprite(texture, position, origin, velocity, rotation, scale, age, true, movement, 
+                radius, rotationSpeed, color, condition, isTextureLoaded));
 
             // Increment the index to get the next vegsprite's position for the next spawn
             lastSpawnedIndex++;
@@ -123,8 +128,19 @@ namespace EE
                     {
                         // Sprite clicked, do something
                         selectedSprite = sprite;
+                        sprite.IsTextureLoaded = true;
                     }
                 }
+                foreach (VegSprite sprite in vegsprites)
+                {
+                    if (sprite.Bounds.Contains(mousePosition))
+                    {
+                        // Sprite clicked, do something
+                        selectedVegSprite = sprite;
+                        sprite.IsTextureLoaded = true;
+                    }
+                }
+
             }
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
@@ -163,9 +179,18 @@ namespace EE
             spriteBatch.Begin();
             foreach (VegSprite sprite in vegsprites)
             {
-                spriteBatch.Draw(sprite.Texture, sprite.Position, sprite.Color1);
+                if (sprite == selectedVegSprite)
+                {
+                    Texture2D selected = Content.Load<Texture2D>("selected");
+                    spriteBatch.Draw(selected, sprite.Position, Color.White);
+                }
+                else
+                {
+                    // Draw the regular sprite texture
+                    spriteBatch.Draw(sprite.Texture, sprite.Position, sprite.Color1);
+                }
             }
-        
+            
             foreach (CustomSprite sprite in sprites)
             {
                 // Draw the selected sprite with a different texture
@@ -181,7 +206,7 @@ namespace EE
                 else
                 {
                     // Draw the regular sprite texture
-                    spriteBatch.Draw(sprite.Texture, sprite.Position, Color.White);
+                    spriteBatch.Draw(sprite.Texture, sprite.Position, sprite.Color1);
                 }
             }
             spriteBatch.End();
@@ -198,7 +223,14 @@ namespace EE
         public bool Moving { get; set; }
         public float Radius { get; set; }
         public Color Color1 { get; set; }
-        public VegSprite(Texture2D texture, Vector2 position, float rotation, float scale, float age, bool moving, float radius, Color color)
+        public Rectangle Bounds
+        {
+            get { return new Rectangle((int)Position.X, (int)Position.Y, Texture.Width, Texture.Height); }
+        }
+        public float Condition;
+        public bool IsTextureLoaded = false;
+        public VegSprite(Texture2D texture, Vector2 position, float rotation, float scale, float age, 
+            bool moving, float radius, Color color, float condition, bool isTextureLoaded)
         {
             Texture = texture;
             Position = position;
@@ -208,6 +240,8 @@ namespace EE
             Moving = moving;
             Radius = radius;
             Color1 = color;
+            IsTextureLoaded = isTextureLoaded;
+            Condition = condition;
         }
         public void Update(GameTime gameTime, float Age, float RotationSpeed)
         {
@@ -241,8 +275,10 @@ namespace EE
         {
             get { return new Rectangle((int)Position.X, (int)Position.Y, Texture.Width, Texture.Height); }
         }
+        public bool IsTextureLoaded = false;
         public CustomSprite(Texture2D texture, Vector2 position, Vector2 origin, Vector2 velocity,
-            float rotation, float scale, float age, bool moving, int movement, float radius, float rotationSpeed, Color color, float condition)
+            float rotation, float scale, float age, bool moving, int movement, float radius, float rotationSpeed, 
+            Color color, float condition, bool isTextureLoaded)
         {
             Texture = texture;
             Position = position;
@@ -256,6 +292,8 @@ namespace EE
             Radius = radius;
             RotationSpeed = rotationSpeed;
             Color1 = color;
+            Condition = condition;
+            IsTextureLoaded = isTextureLoaded;
         }
         public void Update(GameTime gameTime, float Age, float RotationSpeed)
         {
