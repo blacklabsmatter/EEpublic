@@ -7,6 +7,7 @@ using System.Drawing;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 using MonoGame.Extended.Sprites;
+using static EE.Game1;
 
 namespace EE
 {
@@ -24,7 +25,15 @@ namespace EE
         private Double lastspawnedTimer = 0.0;
         private CustomSprite selectedSprite;
         private VegSprite selectedVegSprite;
-        Texture2D selected;
+
+        public enum VelocityModifierMethod
+        {
+            Method1,
+            Circle,
+            Method3,
+            // Add more methods as needed
+        }
+
 
         private void SpawnForest()
         {
@@ -52,13 +61,13 @@ namespace EE
             Texture2D texture = Content.Load<Texture2D>("passerine1");
             Vector2 origin = (Vector2)vegsprites[lastSpawnedIndex].Position;
             Vector2 position = origin;
-            Vector2 velocity = new Vector2((float)random.NextDouble() * 2 - 1, (float)random.NextDouble() * 2 - 1);
+            VelocityModifierMethod movement = VelocityModifierMethod.Method1;
+            Vector2 velocity = new Vector2((((float)random.NextDouble() * 2) - 1), (((float)random.NextDouble() * 2) - 1));
             float rotation = (float)random.Next(0, 360);
             float scale = 1;
             float age = 0f;
             bool moving = true;
-            int movement = 1;
-            float radius = (float)random.Next(10, 50);
+            float radius = 0;
             float rotationSpeed = (float)random.NextDouble() * 2 - 1; // generates a number between -1 and 1
             while (rotationSpeed == 0) // keep generating new numbers until non-zero is produced
             {
@@ -142,14 +151,30 @@ namespace EE
                 }
 
             }
+            // Keyboard and gamead Input Handling
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
+
+            // Increment time as a double
             elapsedTime += gameTime.ElapsedGameTime.TotalSeconds;
+                // Update the age of each sprite
+            float elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            foreach (CustomSprite sprite in sprites)
+            {
+                sprite.Age += elapsedSeconds;
+            }
+            foreach (VegSprite sprite in vegsprites)
+            {
+                sprite.Age += elapsedSeconds;
+            }
+
+            // Sprite spawning instructions
             while (vegsprites.Count < 5)
             { SpawnForest(); }
             while (vegsprites.Count > sprites.Count && elapsedTime - lastspawnedTimer > 1)
             { SpawnSprite(); lastspawnedTimer = elapsedTime; }
-            foreach (CustomSprite sprite in sprites)// Wrap sprites and increment position by velocity
+            // Wrap sprites and increment position by velocity
+            foreach (CustomSprite sprite in sprites)
             {
                 if (sprite.Position.Y > graphics.PreferredBackBufferHeight)
                 {
@@ -167,6 +192,8 @@ namespace EE
                 {
                     sprite.Position = new Vector2(graphics.PreferredBackBufferWidth, sprite.Position.Y);
                 }
+
+                // Main velocity production
                 sprite.Position += sprite.Velocity;
             }
             base.Update(gameTime);
@@ -176,6 +203,7 @@ namespace EE
         {
             GraphicsDevice.Clear(Color.Azure);
 
+            // Draw sprite textures and selected textures
             spriteBatch.Begin();
             foreach (VegSprite sprite in vegsprites)
             {
@@ -200,7 +228,7 @@ namespace EE
                     int y = 10; // Starting y position of text
                     Texture2D selected = Content.Load<Texture2D>("selected");
                     spriteBatch.Draw(selected, sprite.Position, Color.White);
-                    spriteBatch.DrawString(font, $"Velocity: {sprite.Velocity}", new Vector2(10, y), Color.Black);
+                    spriteBatch.DrawString(font, $"VelocityModifier: {sprite.VelocityModifier}", new Vector2(10, y), Color.Black);
                     y += 20; // Increase y position for next line of text
                 }
                 else
@@ -248,9 +276,6 @@ namespace EE
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (Moving)
             {
-                //Increase Age by 1 per second
-                Age += (float)gameTime.ElapsedGameTime.TotalSeconds;
-
                 //Set rotation angle
                 Rotation += RotationSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
@@ -266,7 +291,7 @@ namespace EE
         public float Scale { get; set; }
         public float Age { get; set; }
         public bool Moving { get; set; }
-        public int Movement { get; set; }
+        public VelocityModifierMethod VelocityModifier { get; set; }
         public float Radius { get; set; }
         public float RotationSpeed { get; set; }
         public Color Color1 { get; set; }
@@ -276,8 +301,22 @@ namespace EE
             get { return new Rectangle((int)Position.X, (int)Position.Y, Texture.Width, Texture.Height); }
         }
         public bool IsTextureLoaded = false;
+        private Vector2 GetCircleVector()
+        {
+            float angle = (float)Math.Atan2(Position.Y - Origin.Y, Position.X - Origin.X);
+            angle += RotationSpeed;
+            float distance = Vector2.Distance(Position, Origin);
+            float x = Origin.X + (float)Math.Cos(angle) * distance;
+            float y = Origin.Y + (float)Math.Sin(angle) * distance;
+            return new Vector2(x - Position.X, y - Position.Y);
+        }
+        private Random random = new Random();
+        private Vector2 GetRandomVector()
+        {
+            return new Vector2((((float)random.NextDouble() * 2) - 1), (((float)random.NextDouble() * 2) - 1));
+        }
         public CustomSprite(Texture2D texture, Vector2 position, Vector2 origin, Vector2 velocity,
-            float rotation, float scale, float age, bool moving, int movement, float radius, float rotationSpeed, 
+            float rotation, float scale, float age, bool moving, VelocityModifierMethod movement, float radius, float rotationSpeed, 
             Color color, float condition, bool isTextureLoaded)
         {
             Texture = texture;
@@ -288,7 +327,7 @@ namespace EE
             Scale = scale;
             Age = age;
             Moving = moving;
-            Movement = movement;
+            VelocityModifier = movement;
             Radius = radius;
             RotationSpeed = rotationSpeed;
             Color1 = color;
@@ -297,11 +336,27 @@ namespace EE
         }
         public void Update(GameTime gameTime, float Age, float RotationSpeed)
         {
-            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            //measure distace from origin
+            Radius = Vector2.Distance(Position, Origin);
+
+            switch (VelocityModifier)
+            {
+                case VelocityModifierMethod.Method1:
+                    Velocity += GetRandomVector();
+                    break;
+                case VelocityModifierMethod.Circle:
+                    Velocity += GetCircleVector();
+                    break;
+            }
+            float elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (Age >= 5f && VelocityModifier != VelocityModifierMethod.Circle)
+            {
+                VelocityModifier = VelocityModifierMethod.Circle;
+            }
+
             if (Moving)
             {
-                //Increase Age by 1 per second
-                Age += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
 
                 //Set rotation angle
                 Rotation += RotationSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
