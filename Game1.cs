@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
@@ -14,17 +14,17 @@ namespace EE
     public class Game1 : Game
     {
         public GraphicsDeviceManager graphics;
-        private GraphicsDevice graphicsDevice;
-        SpriteBatch spriteBatch;
-        private SpriteFont font;
-        List<CustomSprite> sprites = new List<CustomSprite>();
-        List<VegSprite> vegsprites = new List<VegSprite>();
-        double elapsedTime;
-        Random random = new Random();
-        private int lastSpawnedIndex = 0;
-        private Double lastspawnedTimer = 0.0;
-        private CustomSprite selectedSprite;
-        private VegSprite selectedVegSprite;
+        public GraphicsDevice graphicsDevice;
+        public SpriteBatch spriteBatch;
+        public SpriteFont font;
+        public List<CustomSprite> sprites = new List<CustomSprite>();
+        public List<VegSprite> vegsprites = new List<VegSprite>();
+        public double elapsedTime;
+        public Random random = new Random();
+        public int lastSpawnedIndex = 0;
+        public double lastspawnedTimer = 0.0;
+        public CustomSprite selectedSprite;
+        public VegSprite selectedVegSprite;
 
         public enum VelocityModifierMethod
         {
@@ -159,6 +159,12 @@ namespace EE
             elapsedTime += gameTime.ElapsedGameTime.TotalSeconds;
                 // Update the age of each sprite
             float elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            for (int i = 0; i < sprites.Count; i++)
+            {
+                CustomSprite sprite = sprites[i];
+                sprite.Update(elapsedSeconds);
+            }
+
             foreach (CustomSprite sprite in sprites)
             {
                 sprite.Age += elapsedSeconds;
@@ -334,7 +340,8 @@ namespace EE
             Condition = condition;
             IsTextureLoaded = isTextureLoaded;
         }
-        public void Update(GameTime gameTime, float Age, float RotationSpeed)
+
+        public void Update(GameTime gameTime, float Age, float RotationSpeed, float elapsedSeconds)
         {
             //measure distace from origin
             Radius = Vector2.Distance(Position, Origin);
@@ -348,7 +355,13 @@ namespace EE
                     Velocity += GetCircleVector();
                     break;
             }
-            float elapsedSeconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            Age += elapsedSeconds;
+            if (Age >= 5f && VelocityModifier != VelocityModifierMethod.Circle)
+            {
+                VelocityModifier = VelocityModifierMethod.Circle;
+            }
+
             if (Age >= 5f && VelocityModifier != VelocityModifierMethod.Circle)
             {
                 VelocityModifier = VelocityModifierMethod.Circle;
@@ -356,10 +369,17 @@ namespace EE
 
             if (Moving)
             {
-
-
                 //Set rotation angle
                 Rotation += RotationSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            }
+        }
+        public void Update(float elapsedSeconds)
+        {
+            Age += elapsedSeconds;
+
+            if (Age >= 5f && VelocityModifier != VelocityModifierMethod.Circle)
+            {
+                VelocityModifier = VelocityModifierMethod.Circle;
             }
         }
     }
