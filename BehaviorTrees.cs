@@ -1,135 +1,125 @@
+// Define the BehaviorTreeStatus enum
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using EE;
 using MonoGame.Extended.Sprites;
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace EE
+// Define the BehaviorTreeStatus enum
+public enum BehaviorTreeStatus
 {
-    public class SpriteBehavior : Game1
+    Running,
+    Success,
+    Failure
+}
+
+// Define the BehaviorTreeNode abstract class
+public abstract class BehaviorTreeNode
+{
+    public abstract BehaviorTreeStatus Tick(BehaviorTreeData data);
+}
+public class BehaviorTreeData
+{
+    private Dictionary<string, object> data = new Dictionary<string, object>();
+
+    public void Set<T>(string key, T value)
     {
-        public enum BehaviorTreeStatus
-        {
-            Success,
-            Failure,
-            Running
-        }
-        public abstract class BehaviorTreeNodeZ
-        {
-            public abstract Task<BehaviorTreeStatus> Tick();
-        }
+        data[key] = value;
+    }
 
-        public abstract class CompositeNode : BehaviorTreeNode
+    public T Get<T>(string key)
+    {
+        if (data.TryGetValue(key, out object value) && value is T typedValue)
         {
-            protected List<BehaviorTreeNode> childNodes = new List<BehaviorTreeNode>();
-
-            public void AddChild(BehaviorTreeNode node)
-            {
-                childNodes.Add(node);
-            }
+            return typedValue;
         }
 
-        public class SequenceNode : CompositeNode
+        return default(T);
+    }
+}
+
+
+// Define the CompositeNode class
+public abstract class CompositeNode : BehaviorTreeNode
+{
+    protected List<BehaviorTreeNode> childNodes = new List<BehaviorTreeNode>();
+
+    public void AddChild(BehaviorTreeNode node)
+    {
+        childNodes.Add(node);
+    }
+}
+
+// Define the SequenceNode class
+public class SequenceNode : CompositeNode
+{
+    public override BehaviorTreeStatus Tick(BehaviorTreeData data)
+    {
+        foreach (BehaviorTreeNode childNode in childNodes)
         {
-            public override async Task<BehaviorTreeStatus> Tick()
+            BehaviorTreeStatus childStatus = childNode.Tick(data);
+
+            if (childStatus != BehaviorTreeStatus.Success)
             {
-                foreach (var node in childNodes)
-                {
-                    var status = await node.Tick();
-                    if (status != BehaviorTreeStatus.Success)
-                        return status;
-                }
-                return BehaviorTreeStatus.Success;
-            }
-        }
-
-        public class ActionNode : BehaviorTreeNode
-        {
-            public override async Task<BehaviorTreeStatus> Tick()
-            {
-                // Implement the action logic here
-                // Return the appropriate BehaviorTreeStatus based on the action result
-                // Add a default return statement
-                return BehaviorTreeStatus.Failure;
-            }
-        }
-        public class RandomMovementNode : ActionNode
-        {
-            private float duration;
-            private float elapsedTime;
-            private Vector2 targetPosition;
-            private float targetSpeed;
-
-
-            public RandomMovementNode(float minDuration, float maxDuration)
-            {
-                duration = (float)(new Random().NextDouble() * (maxDuration - minDuration) + minDuration);
-            }
-
-            public override async Task<BehaviorTreeStatus> Tick()
-            {
-                if (elapsedTime >= duration)
-                {
-                    // Transition to circular movement after random duration
-                    return BehaviorTreeStatus.Success;
-                }
-
-                // Perform random movement logic
-                MoveRandomly();
-
-                elapsedTime += (float)Game1.gameTime.ElapsedGameTime.TotalSeconds;
-                return BehaviorTreeStatus.Running;
-            }
-
-            private void MoveRandomly(sprite.Velocity, GameTime gameTime, Random random)
-            {
-                sprite.Velocity = new Vector2((((float)random.NextDouble() * 2) - 1), (((float)random.NextDouble() * 2) - 1));
+                // If any child node fails or is running, return its status
+                return childStatus;
             }
         }
 
-        public class BehaviorTree
-        {
-            private BehaviorTreeNode root;
+        // All child nodes succeeded, return Success
+        return BehaviorTreeStatus.Success;
+    }
+}
 
-            public BehaviorTree(BehaviorTreeNode rootNode)
-            {
-                root = rootNode;
-            }
+// Define the ActionNode class
+public class ActionNode : BehaviorTreeNode
+{
+    public override BehaviorTreeStatus Tick(BehaviorTreeData data)
+    {
+        // Implement the action logic here
+        // Return Success, Failure, or Running based on the action's outcome
+        
 
-            public async Task<BehaviorTreeStatus> Tick()
-            {
-                return await root.Tick();
-            }
-        }
+        return BehaviorTreeStatus.Success;
+    }
+}
+public class MoveAction : ActionNode
+{
+    private CustomSprite sprite;
+    private List<VegSprite> vegsprites;
+    private int lastspawnedindex;
+    private Random random;
+    private Vector2 targetPosition;
+    private float moveSpeed;
 
-        public class NPCController
-        {
-            private BehaviorTree behaviorTree;
+    public MoveAction(CustomSprite sprite, Vector2 targetPosition, float moveSpeed, Random random, List<VegSprite> vegsprites, int lastspawnedindex)
+    {
+        this.sprite = sprite;
+        this.targetPosition = targetPosition;
+        this.moveSpeed = random.Next(-1, 1); 
+        this.random = random;
+        this.vegsprites = vegsprites;
+        this.lastspawnedindex = lastspawnedindex;
+    }
 
-            public NPCController()
-            {
-                // Instantiate and assemble the behavior tree
-                behaviorTree = new BehaviorTree(CreateBehaviorTreeRoot());
-            }
+    public override BehaviorTreeStatus Tick(BehaviorTreeData data)
+    {
+        // Retrieve the list of sprites from the behavior tree data
+        List<VegSprite> vegsprites = data.Get<List<VegSprite>>("Sprites");
 
-            public void Update()
-            {
-                // Call the behavior tree's tick function
-                behaviorTree.Tick();
-            }
+        // Determine the desired sprite from the list
+        VegSprite targetSprite = vegsprites[lastspawnedindex];
 
-            private BehaviorTreeNode CreateBehaviorTreeRoot()
-            {
-                var randomMovementNode = new RandomMovementNode(3f, 10f);
-                var circleMovementNode = new CircleMovementNode(3f, 10f, sprite.Origin, sprite.Radius);
+        // Update the target position based on the desired sprite
+        targetPosition = targetSprite.Position;
 
-                var sequenceNode = new SequenceNode();
-                sequenceNode.AddChild(randomMovementNode);
-                sequenceNode.AddChild(circleMovementNode);
+        // Calculate the direction from the current position to the target position
+        Vector2 direction = Vector2.Normalize(targetPosition - sprite.Position);
 
-                return sequenceNode;
-            }
+        // Update the sprite's velocity to move in the desired direction
+        sprite.Velocity = direction * moveSpeed;
 
-        }
+        // Return Success to indicate that the movement action has been performed
+        return BehaviorTreeStatus.Success;
     }
 }
